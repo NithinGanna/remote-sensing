@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Flask Web Application</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+  <style>
+    #map {
+      height: 600px;
+      border: 1px solid #0a0101;
+    }
+    .loading-spinner {
+      display: none;
+    }
+    #imageContainer{
+      height: 500px;
+    }
+    #histContainer{
+      height: 500px;
+
+    }
+    .nav-height{
+      height: 100px;
+    }
+    body {
+      background-color: #f9f9f9;
+    }
+    
+    .navbar {
+      background-color: #7f6e6e;
+      border-bottom: 4px solid #ffc107;
+      border-radius: 0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      position: relative;
+    }
+    
+    .navbar-brand {
+      color: #fff;
+      font-size: 32px;
+      font-weight: bold;
+    }
+    
+    .navbar-toggler {
+      border: none;
+      outline: none;
+      position: absolute;
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%);
+      background-color: transparent;
+      color: #fff;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    .navbar-toggler-icon {
+      width: 24px;
+      height: 24px;
+    }
+    
+    .navbar-nav .nav-link {
+      color: #fff;
+      font-size: 20px;
+      font-weight: bold;
+      margin-left: 20px;
+      transition: color 0.3s ease;
+    }
+    
+    .navbar-nav .nav-link:hover {
+      color: #ffc107;
+    }
+    
+
+    .forest-illustration {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      z-index: -1;
+    }
+    
+    @media (max-width: 767px) {
+      .navbar-brand {
+        font-size: 28px;
+      }
+      
+      .navbar-nav .nav-link {
+        font-size: 18px;
+      }
+    }
+    .container {
+      padding-top: 50px;
+    
+      
+    }
+
+    .column {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 20px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    form label {
+      font-weight: bold;
+      color: #333;
+    }
+    
+    form select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+
+    #imageContainer{
+      height: 500px;
+      /* border: 1px solid #ddd; */
+      /* background-color: #f1f1f1; */
+      background-color: #f9f9f9;
+      /* display: flex; */
+      /* justify-content: center;
+      align-items: center; */
+      overflow-y: auto;
+      overflow-x: auto;
+
+    }
+
+    #histContainer {
+      height: 500px;
+      /* border: 1px solid #ddd; */
+      /* background-color: #f1f1f1; */
+      background-color: #f9f9f9;
+      /* display: flex; */
+      /* justify-content: center;
+      align-items: center; */
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+
+
+    .area {
+      opacity: 0.6;
+      fill-opacity: 0.2;
+      stroke-width: 2;
+    }
+
+
+
+ 
+    
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="m-1">
+
+      <nav class="navbar navbar-expand-sm " >
+        <div class="container-fluid navbar-collapse justify-content-start">
+          <a class="navbar-brand fs-2" href="/">Telangana Forest Analysis</a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav">
+              <li class="nav-item ">
+                <a class="nav-link fs-4" href="#">About Us</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link fs-4" href="#">Contact Us</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+      
+    </div>
+    
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6">
+          <div id="map"></div>
+        </div>
+        <div class="col-md-6 mt-4">
+          <div class="p-3 column">
+            <form id="my-form" action="/result" method="post">
+              <div class="mb-3">
+                <label for="date-start" class="h5">From:</label>
+                <input type="date" id="date-start" name="date-start" class="form-control" required value="2022-01-01">
+              </div>
+              <div class="mb-3">
+                <label for="date-end" class="h5">To:</label>
+                <input type="date" id="date-end" name="date-end" class="form-control" required value="2023-02-10">
+              </div>
+              <div class="mb-3">
+                <label for="metric" class="h5">Analysis:</label>
+                <select id="metric" name="metric" class="form-control" required>
+                  <option value="">Select</option>
+                  <option value="ndvi">NDVI</option>
+                  <option value="ndwi">NDWI</option>
+                  <option value="forest">FOREST-COVER</option>
+                  <option value="ml">ML-Random forest</option>
+                </select>
+              </div>
+              <input type="hidden" id="lat-start" name="lat-start">
+              <input type="hidden" id="lon-start" name="lon-start">
+              <input type="hidden" id="lat-end" name="lat-end">
+              <input type="hidden" id="lon-end" name="lon-end">
+              <br>
+              <div class="text-center">
+                <button type="submit" id="b" class="btn btn-primary">Confirm</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="d-flex justify-content-center align-items-center mt-4">
+      <div class="loading-spinner">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row ">
+      <div id="imageContainer" class="col-md-6">
+          
+      </div>
+      <div id="histContainer" class="col-md-6">
+        
+      </div>
+    </div>
+
+
+
+    <br>
+
+    <br>
+
+
+
+
+
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
+  <script>
+    // Initialize the map
+    // var map = L.map('map').setView([0, 0], 2);   //india map
+    var map = L.map('map').setView([15.733048, 80.945512], 9);  // dataset area
+    // Add the tile layer (e.g., OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    // Enable drawing on the map
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+    var drawControl = new L.Control.Draw({
+      draw: {
+        polygon: true,
+        rectangle: true,
+        circle: false,
+        marker: false,
+        circlemarker: false
+      },
+      edit: {
+        featureGroup: drawnItems,
+        remove: true
+      }
+    });
+    map.addControl(drawControl);
+    // Handle the draw events
+    // Initialize an array to store the selected areas
+    var selectedAreas = [];
+
+
+
+    // Function to generate a random color
+    // function getRandomColor() {
+    //   var letters = '0123456789ABCDEF';
+    //   var color = '#';
+    //   var index=0;
+    //   for (var i = 0; i < 6; i++) {
+    //     color += letters[Math.floor(Math.random() * 16)];
+    //   }
+    //   return color;
+    // }
+
+
+    // Array of predefined colors
+    var colors = [
+      '#FF0000', // Red
+      '#00FF00', // Green
+      '#0000FF', // Blue
+      '#FF00FF', // Magenta
+      '#00FFFF', // Cyan
+      '#FFFF00', // Yellow
+      '#800080', // Purple
+      '#FFA500', // Orange
+      '#008080', // Teal
+      '#FFC0CB' , // Pink
+      '#FF5733', // Coral
+      '#8B4513', // SaddleBrown
+      '#7CFC00', // LawnGreen
+      '#9932CC', // DarkOrchid
+      '#FF8C00'  // DarkOrange
+    ];
+
+    // Variable to keep track of the color index
+    var colorIndex = 0;
+
+    // Function to get the next color from the array
+    function getNextColor() {
+      var color = colors[colorIndex];
+      colorIndex = (colorIndex + 1);
+      if(colorIndex>14)
+      {
+        colorIndex=0;
+      }
+      return color;
+    }
+
+    // function displayErrorMessage(message) {
+    //   var errorMessageElement = document.getElementById('error-message');
+    //   errorMessageElement.textContent = message;
+    //   errorMessageElement.style.display = 'block';
+    // }
+
+
+
+
+    // Handle the draw events
+    // Handle the draw events
+    map.on(L.Draw.Event.CREATED, function (event) {
+      var layer = event.layer;
+      drawnItems.addLayer(layer);
+      // Get the bounds of the drawn area
+      var bounds = layer.getBounds();
+      // Update the latitude and longitude inputs with the bounds
+
+
+      // Generate a random color for the area
+      var fillColor = getNextColor();
+
+      // Set the area styles with the random color
+      layer.setStyle({
+        className: 'area',
+        fillColor: fillColor,
+        color: fillColor
+      });
+
+      // Split the bounds coordinates into latitude and longitude
+      var latStart = bounds.getSouthWest().lat;
+      var lonStart = bounds.getSouthWest().lng;
+      var latEnd = bounds.getNorthEast().lat;
+      var lonEnd = bounds.getNorthEast().lng;
+
+      // Update the hidden input fields with the individual values
+      var latStartInput = document.getElementById('lat-start');
+      var lonStartInput = document.getElementById('lon-start');
+      var latEndInput = document.getElementById('lat-end');
+      var lonEndInput = document.getElementById('lon-end');
+
+      // Append the values to the existing input values
+      latStartInput.value += latStart + ';';
+      lonStartInput.value += lonStart + ';';
+      latEndInput.value += latEnd + ';';
+      lonEndInput.value += lonEnd + ';';
+    });
+
+
+    // Handle the draw removal event
+    // map.on(L.Draw.Event.DELETED, function (event) {
+    //   var layers = event.layers;
+    //   layers.eachLayer(function (layer) {
+    //     drawnItems.removeLayer(layer); // Remove the shape from the map
+    //   });
+    //   lonStart=' '
+    //   latStart=' '
+    //   latEnd=' '
+    //   lonEnd=' '
+    // });
+
+
+    // Handle the draw removal event
+    map.on(L.Draw.Event.DELETED, function (event) {
+      var layers = event.layers;
+      layers.eachLayer(function (layer) {
+        drawnItems.removeLayer(layer); // Remove the shape from the map
+      });
+
+      // Clear the values of the hidden input fields
+      var latStartInput = document.getElementById('lat-start');
+      var lonStartInput = document.getElementById('lon-start');
+      var latEndInput = document.getElementById('lat-end');
+      var lonEndInput = document.getElementById('lon-end');
+      latStartInput.value = '';
+      lonStartInput.value = '';
+      latEndInput.value = '';
+      lonEndInput.value = '';
+      colorIndex=0;
+    });
+
+
+
+
+
+
+
+
+
+    // Handle form submission using AJAX
+    var form = document.getElementById('my-form');
+    form.addEventListener('submit', function (event) {
+      event.preventDefault(); // Prevent form submission
+
+      // Show the loading spinner
+      var loadingSpinner = document.querySelector('.loading-spinner');
+      loadingSpinner.style.display = 'block';
+
+      // Get the form data
+      var formData = new FormData(form);
+
+      // Create an XMLHttpRequest object
+      var xhr = new XMLHttpRequest();
+
+      // Configure the request
+      xhr.open('POST', '/result', true);
+
+      // Set up the callback function to handle the response
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          // Hide the loading spinner
+          loadingSpinner.style.display = 'none';
+
+          if (xhr.status === 200) {
+            // Handle the successful response here
+            var response = JSON.parse(xhr.responseText);
+
+
+            if(response.l=='0'){
+              alert("please select an area in the map");
+              var container=document.getElementById("imageContainer");
+              container.innerHTML= ' ';
+              var container1=document.getElementById("histContainer");
+              container1.innerHTML= ' ';
+            }
+
+            else if(response.message=="null"){
+              alert("The error can be :\n1. The range of coordinates are not applicable\n2. No data found in the range of dates\nUse high range date\ndonot go beyond the range of map\n");
+              var container=document.getElementById("imageContainer");
+              container.innerHTML= ' ';
+              var container1=document.getElementById("histContainer");
+              container1.innerHTML= ' ';
+            }  
+
+            else if (response.img_base64) {
+              // Update the image source with the received base64 data
+              // var img = document.getElementById('result-image');
+              // img.src = 'data:image/png;base64,' + response.img_base64;
+              // console.log(image_base64.length)
+              var m=document.getElementById('metric').value;
+              if (m == 'ndvi' || m == 'ndwi' || m == 'ml')
+              {
+                var container=document.getElementById("imageContainer");
+                container.innerHTML= ' ';
+                var container1=document.getElementById("histContainer");
+                container1.innerHTML= ' ';
+
+                for(var i=0;i<response.img_base64.length;i++){
+                  // var decs=atob(img_base64[i]);
+                  var img=document.createElement('img');
+                  img.src='data:image/png;base64,'+response.img_base64[i];
+                  var container=document.getElementById("imageContainer");
+                  container.appendChild(img);
+
+
+                  var img1=document.createElement('img');
+                  img1.src='data:image/png;base64,'+response.his_base64[i];
+                  var container1=document.getElementById("histContainer");
+                  container1.appendChild(img1);
+
+
+
+                }
+
+              }
+              else if(m == 'forest')
+              {
+                var container=document.getElementById("imageContainer");
+                container.innerHTML= ' ';
+                var container1=document.getElementById("histContainer");
+                container1.innerHTML= ' ';
+                for(var i=0;i<response.img_base64.length;i++){
+                  // var decs=atob(img_base64[i]);
+                  var img=document.createElement('img');
+                  img.src='data:image/png;base64,'+response.img_base64[i];
+                  var container=document.getElementById("imageContainer");
+                  container.appendChild(img);
+
+                }
+
+              }
+            } else {
+              // Handle error response
+              console.error('Error: ' + response.error);
+            }
+          } else {
+            // Handle error response
+            console.error('Error: ' + xhr.status);
+          }
+        }
+      };
+
+      // Send the form data
+      xhr.send(formData);
+    });
+
+    
+
+        
+  </script>
+  
+
+  
+</body>
+</html>
+
+
+
+
+
+
